@@ -1,28 +1,37 @@
 import JWT from "jsonwebtoken";
-import userMdoel from "../models/userModel.js";
+import User from "../models/userModel.js"; // Import the user model
 
-// USER AUTH
+// USER AUTHENTICATION CHECK
 export const isAuth = async (req, res, next) => {
-  const { token } = req.cookies;
-  //valdiation
+  const { token } = req.cookies; // Assuming token is stored in cookies
+
   if (!token) {
     return res.status(401).send({
       success: false,
-      message: "UnAuthorized User",
+      message: "Unauthorized User: No token provided",
     });
   }
-  const decodeData = JWT.verify(token, process.env.JWT_SECRET);
-  req.user = await userMdoel.findById(decodeData._id);
-  next();
-};
 
-// ADMIN AUTH
-export const isAdmin = async (req, res, next) => {
-  if (req.user.role !== "admin") {
+  try {
+    const decoded = JWT.verify(token, process.env.JWT_SECRET); // Verify the token
+    req.user = await User.findById(decoded._id); // Retrieve user by decoded ID
+    next(); // Proceed to next middleware or route handler
+  } catch (error) {
+    console.error("JWT Error:", error);
     return res.status(401).send({
       success: false,
-      message: "admin only",
+      message: "Invalid or expired token",
     });
   }
-  next();
+};
+
+// ADMIN AUTHENTICATION CHECK
+export const isAdmin = async (req, res, next) => {
+  if (!req.user || req.user.role !== "admin") {
+    return res.status(403).send({
+      success: false,
+      message: "Admin access only",
+    });
+  }
+  next(); // Allow access if the user is an admin
 };
